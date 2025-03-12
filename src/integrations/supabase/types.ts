@@ -30,6 +30,72 @@ export type Database = {
         }
         Relationships: []
       }
+      time_entries: {
+        Row: {
+          break_time: number | null
+          created_at: string | null
+          currency: string
+          date: string
+          end_time: string | null
+          hourly_rate: number
+          id: string
+          start_time: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          break_time?: number | null
+          created_at?: string | null
+          currency?: string
+          date?: string
+          end_time?: string | null
+          hourly_rate?: number
+          id?: string
+          start_time: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          break_time?: number | null
+          created_at?: string | null
+          currency?: string
+          date?: string
+          end_time?: string | null
+          hourly_rate?: number
+          id?: string
+          start_time?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_preferences: {
+        Row: {
+          created_at: string | null
+          default_currency: string | null
+          default_hourly_rate: number | null
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          default_currency?: string | null
+          default_hourly_rate?: number | null
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          default_currency?: string | null
+          default_hourly_rate?: number | null
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
