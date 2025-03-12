@@ -146,10 +146,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signOut({}); // <-- Add empty object if required
+  
+      // Check if signOut exists before calling it
+      if (!supabase.auth.signOut) {
+        throw new Error("signOut method is not available on SupabaseAuthClient");
+      }
+  
+      const { error } = await supabase.auth.signOut();
+      
       if (error) {
         throw error;
       }
+  
       setProfile(null);
       navigate("/");
     } catch (error: any) {
@@ -162,7 +170,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     }
   };
-  
 
   const updateProfile = async (data: { name?: string }) => {
     try {
