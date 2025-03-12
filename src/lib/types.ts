@@ -31,3 +31,13 @@ export const CURRENCIES: Currency[] = [
   { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
   { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar' },
 ];
+
+export type TimeStatistics = {
+  totalHours: number;
+  totalEarnings: number;
+  averageHourlyRate: number;
+  currency: string;
+  entriesCount: number;
+  periodStart: string;
+  periodEnd: string;
+}

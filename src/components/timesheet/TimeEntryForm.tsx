@@ -4,10 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
-import { TimeEntry } from "@/lib/types";
+import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/components/ui/use-toast";
+import { CURRENCIES } from "@/lib/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const TimeEntryForm = () => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -25,13 +28,15 @@ export const TimeEntryForm = () => {
     try {
       const { error } = await supabase
         .from('time_entries')
-        .insert([{
-          ...formData,
+        .insert({
+          user_id: user?.id,
+          date: formData.date,
+          start_time: formData.startTime,
+          end_time: formData.endTime || null,
           break_time: formData.breakTime,
           hourly_rate: formData.hourlyRate,
-          start_time: formData.startTime,
-          end_time: formData.endTime
-        }]);
+          currency: formData.currency
+        });
 
       if (error) throw error;
 
@@ -100,7 +105,7 @@ export const TimeEntryForm = () => {
               type="number"
               min="0"
               value={formData.breakTime}
-              onChange={(e) => setFormData(prev => ({ ...prev, breakTime: parseInt(e.target.value) }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, breakTime: parseInt(e.target.value) || 0 }))}
             />
           </div>
           <div className="space-y-2">
@@ -111,21 +116,30 @@ export const TimeEntryForm = () => {
               min="0"
               step="0.01"
               value={formData.hourlyRate}
-              onChange={(e) => setFormData(prev => ({ ...prev, hourlyRate: parseFloat(e.target.value) }))}
+              onChange={(e) => setFormData(prev => ({ ...prev, hourlyRate: parseFloat(e.target.value) || 0 }))}
               required
             />
           </div>
           <div className="space-y-2">
             <label htmlFor="currency" className="text-sm font-medium">Currency</label>
-            <Input
-              id="currency"
-              value={formData.currency}
-              onChange={(e) => setFormData(prev => ({ ...prev, currency: e.target.value }))}
-              required
-            />
+            <Select 
+              value={formData.currency} 
+              onValueChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select currency" />
+              </SelectTrigger>
+              <SelectContent>
+                {CURRENCIES.map((curr) => (
+                  <SelectItem key={curr.code} value={curr.code}>
+                    {curr.symbol} {curr.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
-        <Button type="submit" disabled={loading}>
+        <Button type="submit" disabled={loading} className="w-full md:w-auto">
           {loading ? "Adding..." : "Add Time Entry"}
         </Button>
       </form>
