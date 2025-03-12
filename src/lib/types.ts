@@ -41,3 +41,18 @@ export type TimeStatistics = {
   periodStart: string;
   periodEnd: string;
 }
+
+export type UserPreferences = {
+  id: string;
+  userId: string;
+  defaultHourlyRate: number;
+  defaultCurrency: string;
+}
+
+export type TimesheetReport = {
+  startDate: string;
+  endDate: string;
+  entries: TimeEntry[];
+  totalPay: number;
+  currency: string;
+}

@@ -32,11 +32,11 @@ const Timesheet = () => {
           </TabsTrigger>
         </TabsList>
         
-        <TabsContent value="entries">
+        <TabsContent value="entries" className="focus-visible:outline-none focus-visible:ring-0">
           <TimeEntryList />
         </TabsContent>
         
-        <TabsContent value="new">
+        <TabsContent value="new" className="focus-visible:outline-none focus-visible:ring-0">
           <TimeEntryForm />
         </TabsContent>
       </Tabs>
