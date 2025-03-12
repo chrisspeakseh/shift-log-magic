@@ -234,7 +234,7 @@ const Reports = () => {
   const chartData = prepareChartData();
 
   return (
-    <div className="container mx-auto px-4 py-8 mb-20 md:mb-0 md:py-12">
+    <div className="container mx-auto px-4 py-8 mb-20 md:mb-0 md:py-12 mt-16">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <h1 className="text-2xl font-bold mb-4 md:mb-0">Reports & Statistics</h1>
         <Button onClick={copyReport} disabled={!statistics} className="w-full md:w-auto">

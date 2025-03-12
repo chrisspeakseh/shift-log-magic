@@ -136,7 +136,7 @@ const Settings = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 mb-20 md:mb-0 md:py-12">
+    <div className="container mx-auto px-4 py-8 mb-20 md:mb-0 md:py-12 mt-16">
       <h1 className="text-2xl font-bold mb-6">Settings</h1>
       
       <div className="grid gap-6 max-w-lg">

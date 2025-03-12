@@ -16,7 +16,7 @@ const Navbar = () => {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-background border-t z-50 md:top-0 md:bottom-auto md:border-b md:border-t-0">
+    <div className="fixed bottom-2 left-0 right-0 bg-background border-t z-50 md:top-0 md:bottom-auto md:border-b md:border-t-0">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="hidden md:block">
