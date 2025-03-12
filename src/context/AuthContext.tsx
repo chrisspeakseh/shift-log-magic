@@ -146,7 +146,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut({}); // <-- Add empty object if required
       if (error) {
         throw error;
       }
@@ -162,6 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     }
   };
+  
 
   const updateProfile = async (data: { name?: string }) => {
     try {
