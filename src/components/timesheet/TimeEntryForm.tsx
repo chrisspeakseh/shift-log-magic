@@ -9,6 +9,14 @@ import { CURRENCIES } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Loader2 } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { Clock } from "lucide-react";
 
 export const TimeEntryForm = () => {
   const { user } = useAuth();
@@ -75,25 +83,6 @@ export const TimeEntryForm = () => {
     fetchUserPreferences();
   }, [user]);
 
-  const updateUserPreferences = async (hourlyRate: number, currency: string) => {
-    if (!user) return;
-    
-    try {
-      const { error } = await supabase
-        .from('user_preferences')
-        .update({
-          default_hourly_rate: hourlyRate,
-          default_currency: currency
-        })
-        .eq('user_id', user.id);
-      
-      if (error) throw error;
-      
-    } catch (error: any) {
-      console.error("Error updating preferences:", error.message);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -115,13 +104,12 @@ export const TimeEntryForm = () => {
 
       if (error) throw error;
 
-      await updateUserPreferences(formData.hourlyRate, formData.currency);
-
       toast({
         title: "Success",
         description: "Time entry added successfully",
       });
 
+      // Reset only date and times, keep the rate and currency
       setFormData(prev => ({
         ...prev,
         date: new Date().toISOString().split('T')[0],
@@ -139,6 +127,40 @@ export const TimeEntryForm = () => {
     }
   };
 
+  const TimeInput = ({ label, value, onChange, id, required = true }: { 
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    id: string;
+    required?: boolean;
+  }) => (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className={cn(
+            "w-full justify-start text-left font-normal",
+            !value && "text-muted-foreground"
+          )}
+        >
+          <Clock className="mr-2 h-4 w-4" />
+          {value ? format(new Date(`2000-01-01T${value}`), 'hh:mm a') : label}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <div className="grid gap-2 p-4">
+          <Input
+            type="time"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            required={required}
+            className="w-[160px]"
+          />
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+
   return (
     <Card className="p-6">
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -155,21 +177,21 @@ export const TimeEntryForm = () => {
           </div>
           <div className="space-y-2">
             <label htmlFor="startTime" className="text-sm font-medium">Start Time</label>
-            <Input
+            <TimeInput
               id="startTime"
-              type="time"
+              label="Select start time"
               value={formData.startTime}
-              onChange={(e) => setFormData(prev => ({ ...prev, startTime: e.target.value }))}
-              required
+              onChange={(value) => setFormData(prev => ({ ...prev, startTime: value }))}
             />
           </div>
           <div className="space-y-2">
             <label htmlFor="endTime" className="text-sm font-medium">End Time (leave empty for ongoing)</label>
-            <Input
+            <TimeInput
               id="endTime"
-              type="time"
+              label="Select end time"
               value={formData.endTime}
-              onChange={(e) => setFormData(prev => ({ ...prev, endTime: e.target.value }))}
+              onChange={(value) => setFormData(prev => ({ ...prev, endTime: value }))}
+              required={false}
             />
           </div>
           <div className="space-y-2">

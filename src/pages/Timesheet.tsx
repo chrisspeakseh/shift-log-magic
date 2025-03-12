@@ -4,7 +4,6 @@ import { Navigate } from "react-router-dom";
 import { TimeEntryForm } from "@/components/timesheet/TimeEntryForm";
 import { TimeEntryList } from "@/components/timesheet/TimeEntryList";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClipboardList, PlusCircle } from "lucide-react";
 
 const Timesheet = () => {

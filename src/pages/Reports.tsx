@@ -1,3 +1,4 @@
+
 import { useAuth } from "@/context/AuthContext";
 import { Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
@@ -7,9 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TimeStatistics, TimeEntry, CURRENCIES } from "@/lib/types";
 import { toast } from "@/components/ui/use-toast";
 import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear } from "date-fns";
-import { CalendarDateRangePicker } from "@/components/reports/DateRangePicker";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { Clock, DollarSign, Calculator, BarChart2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Clock, DollarSign, Calculator, BarChart2, Calendar, Copy } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 const Reports = () => {
   const { user } = useAuth();
@@ -60,13 +62,58 @@ const Reports = () => {
         newRange = { from: subDays(now, 30), to: now };
         break;
       case "custom":
-        // Keep the current custom range
-        return;
+        return; // Keep the current range for custom
       default:
         break;
     }
     
     setDateRange(newRange);
+  };
+
+  const copyReport = () => {
+    if (!statistics) return;
+    
+    const currencySymbol = CURRENCIES.find(c => c.code === statistics.currency)?.symbol || statistics.currency;
+    
+    let reportText = `Time Period: From ${format(dateRange.from, 'PPP')} to ${format(dateRange.to, 'PPP')}\n\n`;
+    
+    timeEntries.forEach(entry => {
+      const startTimeFormatted = format(new Date(`2000-01-01T${entry.startTime}`), 'h:mm a');
+      let endTimeFormatted = 'ongoing';
+      let dailyPay = '(in progress)';
+      
+      if (entry.endTime) {
+        endTimeFormatted = format(new Date(`2000-01-01T${entry.endTime}`), 'h:mm a');
+        
+        const startParts = entry.startTime.split(':');
+        const endParts = entry.endTime.split(':');
+        
+        const startDate = new Date();
+        startDate.setHours(parseInt(startParts[0], 10), parseInt(startParts[1], 10), 0);
+        
+        const endDate = new Date();
+        endDate.setHours(parseInt(endParts[0], 10), parseInt(endParts[1], 10), 0);
+        
+        const diffMs = endDate.getTime() - startDate.getTime();
+        const diffHours = diffMs / (1000 * 60 * 60) - (entry.breakTime / 60);
+        
+        if (diffHours > 0) {
+          const total = diffHours * entry.hourlyRate;
+          dailyPay = `${currencySymbol}${total.toFixed(2)}`;
+        }
+      }
+      
+      reportText += `${format(new Date(entry.date), 'PPP')} - Work from ${startTimeFormatted} to ${endTimeFormatted} - ${dailyPay}\n`;
+    });
+    
+    reportText += `\nTotal Pay: ${currencySymbol}${statistics.totalEarnings.toFixed(2)}`;
+    
+    navigator.clipboard.writeText(reportText).then(() => {
+      toast({
+        title: "Report copied",
+        description: "The report has been copied to your clipboard",
+      });
+    });
   };
 
   const fetchTimeEntries = async () => {
@@ -84,7 +131,6 @@ const Reports = () => {
 
       if (error) throw error;
 
-      // Transform the data to match our TimeEntry type
       const transformedData: TimeEntry[] = data.map(entry => ({
         id: entry.id,
         userId: entry.user_id,
@@ -117,10 +163,10 @@ const Reports = () => {
 
     let totalHours = 0;
     let totalEarnings = 0;
-    const mainCurrency = entries[0].currency; // Assume the first entry's currency for simplicity
+    const mainCurrency = entries[0].currency;
 
     entries.forEach(entry => {
-      if (!entry.endTime) return; // Skip ongoing entries
+      if (!entry.endTime) return;
 
       const startParts = entry.startTime.split(':');
       const endParts = entry.endTime.split(':');
@@ -131,7 +177,6 @@ const Reports = () => {
       const endDate = new Date();
       endDate.setHours(parseInt(endParts[0], 10), parseInt(endParts[1], 10), 0);
       
-      // Calculate hours accounting for break time
       const diffMs = endDate.getTime() - startDate.getTime();
       const hours = diffMs / (1000 * 60 * 60) - (entry.breakTime / 60);
       
@@ -141,7 +186,7 @@ const Reports = () => {
       }
     });
 
-    const stats: TimeStatistics = {
+    setStatistics({
       totalHours: parseFloat(totalHours.toFixed(2)),
       totalEarnings: parseFloat(totalEarnings.toFixed(2)),
       averageHourlyRate: entries.length > 0 ? parseFloat((totalEarnings / totalHours).toFixed(2)) : 0,
@@ -149,19 +194,16 @@ const Reports = () => {
       entriesCount: entries.length,
       periodStart: format(dateRange.from, 'PPP'),
       periodEnd: format(dateRange.to, 'PPP')
-    };
-
-    setStatistics(stats);
+    });
   };
 
-  // Prepare data for charts
   const prepareChartData = () => {
     if (!timeEntries.length) return [];
 
     const dailyData: Record<string, { date: string, hours: number, earnings: number }> = {};
 
     timeEntries.forEach(entry => {
-      if (!entry.endTime) return; // Skip ongoing entries
+      if (!entry.endTime) return;
 
       const date = entry.date;
       if (!dailyData[date]) {
@@ -177,7 +219,6 @@ const Reports = () => {
       const endDate = new Date();
       endDate.setHours(parseInt(endParts[0], 10), parseInt(endParts[1], 10), 0);
       
-      // Calculate hours accounting for break time
       const diffMs = endDate.getTime() - startDate.getTime();
       const hours = diffMs / (1000 * 60 * 60) - (entry.breakTime / 60);
       
@@ -191,51 +232,73 @@ const Reports = () => {
   };
 
   const chartData = prepareChartData();
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
   return (
     <div className="container mx-auto px-4 py-8 mb-20 md:mb-0 md:py-12">
-      <h1 className="text-2xl font-bold mb-6">Reports & Statistics</h1>
-      
-      <div className="mb-6 space-y-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Date Range</CardTitle>
-            <CardDescription>Select time period for reports</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Select value={period} onValueChange={setPeriod}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select period" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="week">This Week</SelectItem>
-                    <SelectItem value="month">This Month</SelectItem>
-                    <SelectItem value="year">This Year</SelectItem>
-                    <SelectItem value="last7">Last 7 Days</SelectItem>
-                    <SelectItem value="last30">Last 30 Days</SelectItem>
-                    <SelectItem value="custom">Custom Range</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {period === "custom" && (
-                <div className="flex items-center">
-                  <div className="grid gap-2">
-                    <div className="flex items-center">
-                      <div>From: {format(dateRange.from, 'PPP')}</div>
-                      <div className="mx-2">-</div>
-                      <div>To: {format(dateRange.to, 'PPP')}</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+        <h1 className="text-2xl font-bold mb-4 md:mb-0">Reports & Statistics</h1>
+        <Button onClick={copyReport} disabled={!statistics} className="w-full md:w-auto">
+          <Copy className="mr-2 h-4 w-4" />
+          Copy Report
+        </Button>
       </div>
+      
+      <Card className="mb-6">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg">Date Range</CardTitle>
+          <CardDescription>Select time period for reports</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Select value={period} onValueChange={setPeriod}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="week">This Week</SelectItem>
+                  <SelectItem value="month">This Month</SelectItem>
+                  <SelectItem value="year">This Year</SelectItem>
+                  <SelectItem value="last7">Last 7 Days</SelectItem>
+                  <SelectItem value="last30">Last 30 Days</SelectItem>
+                  <SelectItem value="custom">Custom Range</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {period === "custom" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">From</label>
+                  <Input
+                    type="date"
+                    value={format(dateRange.from, 'yyyy-MM-dd')}
+                    onChange={(e) => {
+                      const newDate = new Date(e.target.value);
+                      if (!isNaN(newDate.getTime())) {
+                        setDateRange(prev => ({ ...prev, from: newDate }));
+                      }
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">To</label>
+                  <Input
+                    type="date"
+                    value={format(dateRange.to, 'yyyy-MM-dd')}
+                    onChange={(e) => {
+                      const newDate = new Date(e.target.value);
+                      if (!isNaN(newDate.getTime())) {
+                        setDateRange(prev => ({ ...prev, to: newDate }));
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
       
       {loading ? (
         <div className="text-center py-10">Loading statistics...</div>
