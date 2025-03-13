@@ -35,16 +35,22 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           .from("user_preferences")
           .select("*")
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
 
-        if (error && error.code !== "PGRST116") {
+        if (error) {
           console.error("Error fetching theme preference:", error.message);
+          return;
         }
 
-        if (data && data.theme) {
-          setTheme(data.theme);
-          localStorage.setItem("theme", data.theme);
-          document.documentElement.classList.toggle("dark", data.theme === "dark");
+        if (data) {
+          // Check if theme property exists in the data before using it
+          const userTheme = data.theme as Theme | undefined;
+          
+          if (userTheme) {
+            setTheme(userTheme);
+            localStorage.setItem("theme", userTheme);
+            document.documentElement.classList.toggle("dark", userTheme === "dark");
+          }
         }
       } catch (error) {
         console.error("Error loading theme preference:", error);
@@ -63,10 +69,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // Save to database if user is authenticated
     if (user) {
       try {
-        await supabase
+        const { error } = await supabase
           .from("user_preferences")
           .update({ theme: newTheme })
           .eq("user_id", user.id);
+          
+        if (error) {
+          console.error("Error saving theme preference:", error.message);
+        }
       } catch (error) {
         console.error("Error saving theme preference:", error);
       }

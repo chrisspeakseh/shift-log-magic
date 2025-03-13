@@ -114,6 +114,7 @@ export type Database = {
           default_currency: string | null
           default_hourly_rate: number | null
           id: string
+          theme: string | null
           updated_at: string | null
           user_id: string
         }
@@ -122,6 +123,7 @@ export type Database = {
           default_currency?: string | null
           default_hourly_rate?: number | null
           id?: string
+          theme?: string | null
           updated_at?: string | null
           user_id: string
         }
@@ -130,6 +132,7 @@ export type Database = {
           default_currency?: string | null
           default_hourly_rate?: number | null
           id?: string
+          theme?: string | null
           updated_at?: string | null
           user_id?: string
         }
