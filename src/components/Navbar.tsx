@@ -15,6 +15,11 @@ const Navbar = () => {
     return location.pathname === path;
   };
 
+  const handleSignOut = (e: React.MouseEvent) => {
+    e.preventDefault();
+    signOut();
+  };
+
   return (
     <div className="fixed bottom-2 left-0 right-0 bg-background border-t z-50 md:top-0 md:bottom-auto md:border-b md:border-t-0">
       <div className="container mx-auto px-4">
@@ -62,7 +67,7 @@ const Navbar = () => {
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={signOut}
+              onClick={handleSignOut}
               className="flex items-center gap-2"
             >
               <LogOut className="h-4 w-4" />

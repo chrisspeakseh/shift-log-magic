@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { User, Session } from "@supabase/supabase-js";
@@ -146,12 +145,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     try {
       setLoading(true);
-  
-      // Check if signOut exists before calling it
-      if (!supabase.auth.signOut) {
-        throw new Error("signOut method is not available on SupabaseAuthClient");
-      }
-  
       const { error } = await supabase.auth.signOut();
       
       if (error) {
@@ -159,8 +152,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
   
       setProfile(null);
+      setUser(null);
+      setSession(null);
       navigate("/");
     } catch (error: any) {
+      console.error("Sign out error:", error.message);
       toast({
         title: "Error",
         description: error.message,

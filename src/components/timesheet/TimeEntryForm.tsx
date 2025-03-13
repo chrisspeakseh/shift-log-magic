@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,34 +39,36 @@ export const TimeEntryForm = () => {
       try {
         setLoadingPreferences(true);
         
-        const { data: preferences, error: preferencesError } = await supabase
-          .from('user_preferences')
+        // Get the most recent entry first
+        const { data: recentEntries, error: entriesError } = await supabase
+          .from('time_entries')
           .select('*')
           .eq('user_id', user.id)
-          .single();
+          .order('created_at', { ascending: false })
+          .limit(1);
         
-        if (preferencesError) throw preferencesError;
+        if (entriesError) throw entriesError;
         
-        if (preferences) {
-          const { data: recentEntries, error: entriesError } = await supabase
-            .from('time_entries')
+        if (recentEntries && recentEntries.length > 0) {
+          const recentEntry = recentEntries[0];
+          setFormData(prev => ({
+            ...prev,
+            hourlyRate: recentEntry.hourly_rate,
+            currency: recentEntry.currency,
+            breakTime: recentEntry.break_time || 0
+          }));
+        } 
+        else {
+          // Fallback to preferences if no entries
+          const { data: preferences, error: preferencesError } = await supabase
+            .from('user_preferences')
             .select('*')
             .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(1);
+            .single();
           
-          if (entriesError) throw entriesError;
+          if (preferencesError && preferencesError.code !== 'PGRST116') throw preferencesError;
           
-          if (recentEntries && recentEntries.length > 0) {
-            const recentEntry = recentEntries[0];
-            setFormData(prev => ({
-              ...prev,
-              hourlyRate: recentEntry.hourly_rate,
-              currency: recentEntry.currency,
-              breakTime: recentEntry.break_time || 0
-            }));
-          } 
-          else if (preferences) {
+          if (preferences) {
             setFormData(prev => ({
               ...prev,
               hourlyRate: preferences.default_hourly_rate || 0,
@@ -164,8 +167,9 @@ export const TimeEntryForm = () => {
   return (
     <Card className="p-6">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
+        {/* Date field centered at the top */}
+        <div className="flex justify-center">
+          <div className="w-full md:w-1/2 space-y-2">
             <label htmlFor="date" className="text-sm font-medium">Date</label>
             <Input
               id="date"
@@ -175,6 +179,10 @@ export const TimeEntryForm = () => {
               required
             />
           </div>
+        </div>
+
+        {/* Start Time and End Time on the same line */}
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <label htmlFor="startTime" className="text-sm font-medium">Start Time</label>
             <TimeInput
@@ -194,18 +202,24 @@ export const TimeEntryForm = () => {
               required={false}
             />
           </div>
-          <div className="space-y-2">
-            <label htmlFor="breakTime" className="text-sm font-medium">Break: {formData.breakTime} minutes</label>
-            <Slider
-              id="breakTime"
-              min={0}
-              max={120}
-              step={5}
-              value={[formData.breakTime]}
-              onValueChange={(values) => setFormData(prev => ({ ...prev, breakTime: values[0] }))}
-              className="py-2"
-            />
-          </div>
+        </div>
+
+        {/* Break Time slider below time inputs */}
+        <div className="space-y-2">
+          <label htmlFor="breakTime" className="text-sm font-medium">Break: {formData.breakTime} minutes</label>
+          <Slider
+            id="breakTime"
+            min={0}
+            max={120}
+            step={5}
+            value={[formData.breakTime]}
+            onValueChange={(values) => setFormData(prev => ({ ...prev, breakTime: values[0] }))}
+            className="py-2"
+          />
+        </div>
+
+        {/* Hourly Rate and Currency */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <label htmlFor="hourlyRate" className="text-sm font-medium">Hourly Rate</label>
             <Input
