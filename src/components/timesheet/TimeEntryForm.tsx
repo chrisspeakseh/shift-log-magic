@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +8,7 @@ import { toast } from "@/components/ui/use-toast";
 import { CURRENCIES } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Loader2 } from "lucide-react";
+import { Loader2, Clock } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -17,7 +16,6 @@ import {
 } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { Clock } from "lucide-react";
 
 export const TimeEntryForm = () => {
   const { user } = useAuth();
@@ -53,8 +51,8 @@ export const TimeEntryForm = () => {
           const recentEntry = recentEntries[0];
           setFormData(prev => ({
             ...prev,
-            hourlyRate: recentEntry.hourly_rate,
-            currency: recentEntry.currency,
+            hourlyRate: recentEntry.hourly_rate || 0,
+            currency: recentEntry.currency || 'USD',
             breakTime: recentEntry.break_time || 0
           }));
         } 
@@ -227,10 +225,9 @@ export const TimeEntryForm = () => {
               type="number"
               min="0"
               step="0.01"
-              value={formData.hourlyRate}
+              value={formData.hourlyRate.toString()}
               onChange={(e) => setFormData(prev => ({ ...prev, hourlyRate: parseFloat(e.target.value) || 0 }))}
               required
-              disabled={loadingPreferences}
             />
           </div>
           <div className="space-y-2">
@@ -238,9 +235,8 @@ export const TimeEntryForm = () => {
             <Select 
               value={formData.currency} 
               onValueChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
-              disabled={loadingPreferences}
             >
-              <SelectTrigger>
+              <SelectTrigger id="currency">
                 <SelectValue placeholder="Select currency" />
               </SelectTrigger>
               <SelectContent>
@@ -253,7 +249,7 @@ export const TimeEntryForm = () => {
             </Select>
           </div>
         </div>
-        <Button type="submit" disabled={loading || loadingPreferences} className="w-full md:w-auto">
+        <Button type="submit" disabled={loading} className="w-full md:w-auto">
           {loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
