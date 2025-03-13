@@ -2,7 +2,7 @@
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { Link, useLocation } from "react-router-dom";
-import { Clock, Settings, FileText, LogOut } from "lucide-react";
+import { Clock, Settings, FileText, LogOut, LayoutTemplate } from "lucide-react";
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
@@ -37,6 +37,17 @@ const Navbar = () => {
               >
                 <Clock className="h-5 w-5" />
                 <span className="text-xs md:text-sm">Timesheet</span>
+              </Button>
+            </Link>
+            
+            <Link to="/templates">
+              <Button 
+                variant={isActive("/templates") ? "default" : "ghost"} 
+                size="sm" 
+                className="flex flex-col md:flex-row items-center gap-1 md:gap-2 h-auto py-2"
+              >
+                <LayoutTemplate className="h-5 w-5" />
+                <span className="text-xs md:text-sm">Templates</span>
               </Button>
             </Link>
             

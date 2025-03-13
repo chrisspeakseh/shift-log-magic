@@ -1,17 +1,20 @@
 
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 import { Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import { Loader2, Moon, Sun } from "lucide-react";
 
 const Settings = () => {
   const { user, profile, updateProfile, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [name, setName] = useState(profile?.name || "");
   const [loading, setLoading] = useState(false);
 
@@ -130,6 +133,29 @@ const Settings = () => {
               </Button>
             </CardFooter>
           </form>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Appearance</CardTitle>
+            <CardDescription>Customize your app experience</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                {theme === "dark" ? (
+                  <Moon className="h-5 w-5" />
+                ) : (
+                  <Sun className="h-5 w-5" />
+                )}
+                <span>Dark Mode</span>
+              </div>
+              <Switch 
+                checked={theme === "dark"}
+                onCheckedChange={toggleTheme}
+              />
+            </div>
+          </CardContent>
         </Card>
         
         <Card>
