@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useCallback, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -17,6 +18,43 @@ import {
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
+// Memoize TimeInput to prevent unnecessary re-renders
+const TimeInput = memo(({ label, value, onChange, id, required = true }: { 
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  id: string;
+  required?: boolean;
+}) => (
+  <Popover>
+    <PopoverTrigger asChild>
+      <Button
+        variant="outline"
+        className={cn(
+          "w-full justify-start text-left font-normal",
+          !value && "text-muted-foreground"
+        )}
+      >
+        <Clock className="mr-2 h-4 w-4" />
+        {value ? format(new Date(`2000-01-01T${value}`), 'hh:mm a') : label}
+      </Button>
+    </PopoverTrigger>
+    <PopoverContent className="w-auto p-0" align="start">
+      <div className="grid gap-2 p-4">
+        <Input
+          type="time"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required={required}
+          className="w-[160px]"
+        />
+      </div>
+    </PopoverContent>
+  </Popover>
+));
+
+TimeInput.displayName = "TimeInput";
+
 export const TimeEntryForm = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -30,46 +68,47 @@ export const TimeEntryForm = () => {
   });
   const [loadingPreferences, setLoadingPreferences] = useState(true);
 
-  useEffect(() => {
-    const fetchUserPreferences = async () => {
-      if (!user) return;
+  // Use useCallback for fetch function to prevent recreation on each render
+  const fetchUserPreferences = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      setLoadingPreferences(true);
       
-      try {
-        setLoadingPreferences(true);
-        
-        // Get the most recent entry first
-        const { data: recentEntries, error: entriesError } = await supabase
-          .from('time_entries')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1);
-        
-        if (entriesError) throw entriesError;
-        
-        if (recentEntries && recentEntries.length > 0) {
-          const recentEntry = recentEntries[0];
-          setFormData(prev => ({
-            ...prev,
-            hourlyRate: recentEntry.hourly_rate || 0,
-            currency: recentEntry.currency || 'USD',
-            breakTime: recentEntry.break_time || 0
-          }));
-        } 
-        else {
-          // Since the user_preferences table no longer has hourly_rate and currency fields,
-          // we'll just use the default values from the initial state
-          console.log("No recent entries found, using default values");
-        }
-      } catch (error: any) {
-        console.error("Error fetching preferences:", error.message);
-      } finally {
-        setLoadingPreferences(false);
+      // Get the most recent entry first
+      const { data: recentEntries, error: entriesError } = await supabase
+        .from('time_entries')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      if (entriesError) throw entriesError;
+      
+      if (recentEntries && recentEntries.length > 0) {
+        const recentEntry = recentEntries[0];
+        setFormData(prev => ({
+          ...prev,
+          hourlyRate: recentEntry.hourly_rate || 0,
+          currency: recentEntry.currency || 'USD',
+          breakTime: recentEntry.break_time || 0
+        }));
+      } 
+      else {
+        // Since the user_preferences table no longer has hourly_rate and currency fields,
+        // we'll just use the default values from the initial state
+        console.log("No recent entries found, using default values");
       }
-    };
-
-    fetchUserPreferences();
+    } catch (error: any) {
+      console.error("Error fetching preferences:", error.message);
+    } finally {
+      setLoadingPreferences(false);
+    }
   }, [user]);
+
+  useEffect(() => {
+    fetchUserPreferences();
+  }, [fetchUserPreferences]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,39 +154,30 @@ export const TimeEntryForm = () => {
     }
   };
 
-  const TimeInput = ({ label, value, onChange, id, required = true }: { 
-    label: string;
-    value: string;
-    onChange: (value: string) => void;
-    id: string;
-    required?: boolean;
-  }) => (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          className={cn(
-            "w-full justify-start text-left font-normal",
-            !value && "text-muted-foreground"
-          )}
-        >
-          <Clock className="mr-2 h-4 w-4" />
-          {value ? format(new Date(`2000-01-01T${value}`), 'hh:mm a') : label}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <div className="grid gap-2 p-4">
-          <Input
-            type="time"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            required={required}
-            className="w-[160px]"
-          />
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
+  // Use memoized handler functions to prevent recreation on each render
+  const handleDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, date: e.target.value }));
+  }, []);
+
+  const handleStartTimeChange = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, startTime: value }));
+  }, []);
+
+  const handleEndTimeChange = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, endTime: value }));
+  }, []);
+
+  const handleBreakTimeChange = useCallback((values: number[]) => {
+    setFormData(prev => ({ ...prev, breakTime: values[0] }));
+  }, []);
+
+  const handleHourlyRateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData(prev => ({ ...prev, hourlyRate: parseFloat(e.target.value) || 0 }));
+  }, []);
+
+  const handleCurrencyChange = useCallback((value: string) => {
+    setFormData(prev => ({ ...prev, currency: value }));
+  }, []);
 
   return (
     <Card className="p-6">
@@ -160,7 +190,7 @@ export const TimeEntryForm = () => {
               id="date"
               type="date"
               value={formData.date}
-              onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+              onChange={handleDateChange}
               required
             />
           </div>
@@ -174,7 +204,7 @@ export const TimeEntryForm = () => {
               id="startTime"
               label="Select start time"
               value={formData.startTime}
-              onChange={(value) => setFormData(prev => ({ ...prev, startTime: value }))}
+              onChange={handleStartTimeChange}
             />
           </div>
           <div className="space-y-2">
@@ -183,7 +213,7 @@ export const TimeEntryForm = () => {
               id="endTime"
               label="Select end time"
               value={formData.endTime}
-              onChange={(value) => setFormData(prev => ({ ...prev, endTime: value }))}
+              onChange={handleEndTimeChange}
               required={false}
             />
           </div>
@@ -198,7 +228,7 @@ export const TimeEntryForm = () => {
             max={120}
             step={5}
             value={[formData.breakTime]}
-            onValueChange={(values) => setFormData(prev => ({ ...prev, breakTime: values[0] }))}
+            onValueChange={handleBreakTimeChange}
             className="py-2"
           />
         </div>
@@ -213,7 +243,7 @@ export const TimeEntryForm = () => {
               min="0"
               step="0.01"
               value={formData.hourlyRate.toString()}
-              onChange={(e) => setFormData(prev => ({ ...prev, hourlyRate: parseFloat(e.target.value) || 0 }))}
+              onChange={handleHourlyRateChange}
               required
             />
           </div>
@@ -221,7 +251,7 @@ export const TimeEntryForm = () => {
             <label htmlFor="currency" className="text-sm font-medium">Currency</label>
             <Select 
               value={formData.currency} 
-              onValueChange={(value) => setFormData(prev => ({ ...prev, currency: value }))}
+              onValueChange={handleCurrencyChange}
             >
               <SelectTrigger id="currency">
                 <SelectValue placeholder="Select currency" />
