@@ -40,13 +40,17 @@ export * from "./sheet";
 export * from "./sidebar";
 export * from "./skeleton";
 export * from "./slider";
-export * from "./sonner";
 export * from "./switch";
 export * from "./table";
 export * from "./tabs";
 export * from "./textarea";
 export * from "./toast";
-export * from "./toaster";
 export * from "./toggle";
 export * from "./toggle-group";
 export * from "./tooltip";
+
+// Explicitly re-export the Toaster component from toast.tsx
+export { Toaster } from "./toaster";
+
+// Re-export the Sonner Toaster with a different name to avoid conflicts
+export { Toaster as SonnerToaster } from "./sonner";
