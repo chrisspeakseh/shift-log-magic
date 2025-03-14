@@ -111,8 +111,6 @@ export type Database = {
       user_preferences: {
         Row: {
           created_at: string | null
-          default_currency: string | null
-          default_hourly_rate: number | null
           id: string
           theme: string | null
           updated_at: string | null
@@ -120,8 +118,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
-          default_currency?: string | null
-          default_hourly_rate?: number | null
           id?: string
           theme?: string | null
           updated_at?: string | null
@@ -129,8 +125,6 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
-          default_currency?: string | null
-          default_hourly_rate?: number | null
           id?: string
           theme?: string | null
           updated_at?: string | null
