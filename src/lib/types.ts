@@ -45,8 +45,7 @@ export type TimeStatistics = {
 export type UserPreferences = {
   id: string;
   userId: string;
-  defaultHourlyRate: number;
-  defaultCurrency: string;
+  theme: string;
 }
 
 export type TimesheetReport = {

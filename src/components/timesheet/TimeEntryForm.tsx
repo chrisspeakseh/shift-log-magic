@@ -57,22 +57,9 @@ export const TimeEntryForm = () => {
           }));
         } 
         else {
-          // Fallback to preferences if no entries
-          const { data: preferences, error: preferencesError } = await supabase
-            .from('user_preferences')
-            .select('*')
-            .eq('user_id', user.id)
-            .single();
-          
-          if (preferencesError && preferencesError.code !== 'PGRST116') throw preferencesError;
-          
-          if (preferences) {
-            setFormData(prev => ({
-              ...prev,
-              hourlyRate: preferences.default_hourly_rate || 0,
-              currency: preferences.default_currency || 'USD'
-            }));
-          }
+          // Since the user_preferences table no longer has hourly_rate and currency fields,
+          // we'll just use the default values from the initial state
+          console.log("No recent entries found, using default values");
         }
       } catch (error: any) {
         console.error("Error fetching preferences:", error.message);
