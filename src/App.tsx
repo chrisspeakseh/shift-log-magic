@@ -23,7 +23,7 @@ const queryClient = new QueryClient({
     queries: {
       refetchOnWindowFocus: false, // Prevent refetching data when window regains focus
       staleTime: 60 * 1000, // Data is fresh for 1 minute
-      cacheTime: 5 * 60 * 1000, // Cache cleanup after 5 minutes
+      gcTime: 5 * 60 * 1000, // Cache cleanup after 5 minutes (formerly cacheTime)
       retry: 1, // Only retry failed requests once
       suspense: false, // Use React Suspense for loading states
     },
