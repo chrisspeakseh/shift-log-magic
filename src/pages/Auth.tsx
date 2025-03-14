@@ -10,6 +10,8 @@ import { Navigate, Link } from "react-router-dom";
 const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [isSigningUp, setIsSigningUp] = useState(false);
   const { signIn, signUp, user, loading } = useAuth();
 
   // Redirect if already logged in
@@ -19,12 +21,16 @@ const Auth = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSigningIn(true);
     await signIn(email, password);
+    setIsSigningIn(false);
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSigningUp(true);
     await signUp(email, password);
+    setIsSigningUp(false);
   };
 
   return (
@@ -67,8 +73,8 @@ const Auth = () => {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Signing in..." : "Sign In"}
+                <Button type="submit" className="w-full" disabled={isSigningIn}>
+                  {isSigningIn ? "Signing in..." : "Sign In"}
                 </Button>
               </CardFooter>
             </form>
@@ -101,8 +107,8 @@ const Auth = () => {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Creating account..." : "Create Account"}
+                <Button type="submit" className="w-full" disabled={isSigningUp}>
+                  {isSigningUp ? "Creating account..." : "Create Account"}
                 </Button>
               </CardFooter>
             </form>
