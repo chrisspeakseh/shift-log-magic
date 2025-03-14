@@ -25,7 +25,6 @@ const queryClient = new QueryClient({
       staleTime: 60 * 1000, // Data is fresh for 1 minute
       gcTime: 5 * 60 * 1000, // Cache cleanup after 5 minutes (formerly cacheTime)
       retry: 1, // Only retry failed requests once
-      suspense: false, // Use React Suspense for loading states
     },
   },
 });
