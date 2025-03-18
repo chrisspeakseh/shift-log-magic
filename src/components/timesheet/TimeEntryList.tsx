@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,11 +18,10 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export const TimeEntryList = () => {
   const { user } = useAuth();
-  const [entries, setEntries] = useState<TimeEntry[]>([]);
-  const [loading, setLoading] = useState(true);
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [editFormData, setEditFormData] = useState({
     date: "",
@@ -33,7 +31,6 @@ export const TimeEntryList = () => {
     hourlyRate: 0,
     currency: "USD",
   });
-  const [groupedEntries, setGroupedEntries] = useState<Record<string, TimeEntry[]>>({});
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [reportDateRange, setReportDateRange] = useState({
     from: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
@@ -41,68 +38,167 @@ export const TimeEntryList = () => {
   });
   const [reportData, setReportData] = useState<TimesheetReport | null>(null);
   const [saving, setSaving] = useState(false);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (user) {
-      fetchTimeEntries();
-    }
-  }, [user]);
+  // Fetch time entries using React Query
+  const { data: entries = [], isLoading } = useQuery({
+    queryKey: ['timeEntries', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      try {
+        const { data, error } = await supabase
+          .from('time_entries')
+          .select('*')
+          .order('date', { ascending: false });
 
-  useEffect(() => {
-    if (entries.length > 0) {
-      // Group entries by month
-      const grouped = entries.reduce((acc, entry) => {
+        if (error) throw error;
+
+        // Transform the data to match our TimeEntry type
+        return data.map(entry => ({
+          id: entry.id,
+          userId: entry.user_id,
+          date: entry.date,
+          startTime: entry.start_time,
+          endTime: entry.end_time || '',
+          hourlyRate: entry.hourly_rate,
+          currency: entry.currency,
+          breakTime: entry.break_time || 0
+        }));
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+        return [];
+      }
+    },
+    enabled: !!user,
+    staleTime: 30000, // Reduce refetching frequency
+  });
+
+  // Group entries by month - move this to a computed value
+  const groupedEntries = entries.length > 0 
+    ? entries.reduce((acc, entry) => {
         const monthYear = format(new Date(entry.date), 'MMMM yyyy');
         if (!acc[monthYear]) {
           acc[monthYear] = [];
         }
         acc[monthYear].push(entry);
         return acc;
-      }, {} as Record<string, TimeEntry[]>);
-      
-      // Sort entries within each month by date (newest first)
-      Object.keys(grouped).forEach(key => {
-        grouped[key].sort((a, b) => 
-          new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
-      });
-      
-      setGroupedEntries(grouped);
-    }
-  }, [entries]);
+      }, {} as Record<string, TimeEntry[]>)
+    : {};
 
-  const fetchTimeEntries = async () => {
-    try {
-      const { data, error } = await supabase
+  // Sort entries within each month
+  Object.keys(groupedEntries).forEach(key => {
+    groupedEntries[key].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+  });
+
+  // Update mutation with optimistic updates
+  const updateMutation = useMutation({
+    mutationFn: async (updatedEntry: TimeEntry) => {
+      const { error } = await supabase
         .from('time_entries')
-        .select('*')
-        .order('date', { ascending: false });
+        .update({
+          date: updatedEntry.date,
+          start_time: updatedEntry.startTime,
+          end_time: updatedEntry.endTime || null,
+          break_time: updatedEntry.breakTime,
+          hourly_rate: updatedEntry.hourlyRate,
+          currency: updatedEntry.currency
+        })
+        .eq('id', updatedEntry.id);
 
       if (error) throw error;
-
-      // Transform the data to match our TimeEntry type
-      const transformedData: TimeEntry[] = data.map(entry => ({
-        id: entry.id,
-        userId: entry.user_id,
-        date: entry.date,
-        startTime: entry.start_time,
-        endTime: entry.end_time || '',
-        hourlyRate: entry.hourly_rate,
-        currency: entry.currency,
-        breakTime: entry.break_time || 0
-      }));
-
-      setEntries(transformedData);
-    } catch (error: any) {
+      return updatedEntry;
+    },
+    onMutate: async (updatedEntry) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['timeEntries', user?.id] });
+      
+      // Snapshot the previous value
+      const previousEntries = queryClient.getQueryData(['timeEntries', user?.id]);
+      
+      // Optimistically update to the new value
+      queryClient.setQueryData(['timeEntries', user?.id], (old: TimeEntry[] = []) => {
+        return old.map(entry => entry.id === updatedEntry.id ? updatedEntry : entry);
+      });
+      
+      return { previousEntries };
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Time entry updated",
+      });
+      setEditingEntry(null);
+    },
+    onError: (error: any, _, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      queryClient.setQueryData(['timeEntries', user?.id], context?.previousEntries);
+      
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
+    },
+    onSettled: () => {
+      setSaving(false);
+      // Always refetch after error or success to synchronize server state
+      queryClient.invalidateQueries({ queryKey: ['timeEntries', user?.id] });
     }
-  };
+  });
+
+  // Delete mutation with optimistic updates
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('time_entries')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      return id;
+    },
+    onMutate: async (id) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['timeEntries', user?.id] });
+      
+      // Snapshot the previous value
+      const previousEntries = queryClient.getQueryData(['timeEntries', user?.id]);
+      
+      // Optimistically update to the new value
+      queryClient.setQueryData(['timeEntries', user?.id], (old: TimeEntry[] = []) => {
+        return old.filter(entry => entry.id !== id);
+      });
+      
+      return { previousEntries };
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Time entry deleted",
+      });
+    },
+    onError: (error: any, _, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      queryClient.setQueryData(['timeEntries', user?.id], context?.previousEntries);
+      
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      // Always refetch after error or success to synchronize server state
+      queryClient.invalidateQueries({ queryKey: ['timeEntries', user?.id] });
+    }
+  });
 
   const startEditEntry = (entry: TimeEntry) => {
     setEditingEntry(entry);
@@ -120,81 +216,26 @@ export const TimeEntryList = () => {
     setEditingEntry(null);
   };
 
-  const saveEdit = async () => {
+  const saveEdit = () => {
     if (!editingEntry) return;
     
     setSaving(true);
     
-    try {
-      const { error } = await supabase
-        .from('time_entries')
-        .update({
-          date: editFormData.date,
-          start_time: editFormData.startTime,
-          end_time: editFormData.endTime || null,
-          break_time: editFormData.breakTime,
-          hourly_rate: editFormData.hourlyRate,
-          currency: editFormData.currency
-        })
-        .eq('id', editingEntry.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Time entry updated",
-      });
-
-      // Update the entry in the local state
-      setEntries(entries.map(entry => 
-        entry.id === editingEntry.id 
-          ? { 
-              ...entry, 
-              date: editFormData.date,
-              startTime: editFormData.startTime,
-              endTime: editFormData.endTime,
-              breakTime: editFormData.breakTime,
-              hourlyRate: editFormData.hourlyRate,
-              currency: editFormData.currency
-            } 
-          : entry
-      ));
-      
-      setEditingEntry(null);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
-    }
+    const updatedEntry: TimeEntry = {
+      ...editingEntry,
+      date: editFormData.date,
+      startTime: editFormData.startTime,
+      endTime: editFormData.endTime,
+      breakTime: editFormData.breakTime,
+      hourlyRate: editFormData.hourlyRate,
+      currency: editFormData.currency,
+    };
+    
+    updateMutation.mutate(updatedEntry);
   };
 
-  const deleteEntry = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('time_entries')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Time entry deleted",
-      });
-
-      // Remove the deleted entry from the state
-      setEntries(entries.filter(entry => entry.id !== id));
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
+  const deleteEntry = (id: string) => {
+    deleteMutation.mutate(id);
   };
 
   const generateReport = () => {
@@ -333,7 +374,7 @@ export const TimeEntryList = () => {
     return currency ? currency.symbol : code;
   };
 
-  if (loading) {
+  if (isLoading) {
     return <div className="flex justify-center p-6">Loading time entries...</div>;
   }
 

@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { CURRENCIES } from "@/lib/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 
 type Template = {
   id: string;
@@ -24,66 +25,70 @@ type Template = {
 
 export const TemplateList = () => {
   const { user } = useAuth();
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [loading, setLoading] = useState(true);
   const [applyDate, setApplyDate] = useState(new Date().toISOString().split('T')[0]);
+  const queryClient = useQueryClient();
+  
+  // Move data fetching to React Query
+  const { data: templates = [], isLoading } = useQuery({
+    queryKey: ['templates', user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      
+      const { data, error } = await supabase
+        .from('entry_templates')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
-  useEffect(() => {
-    if (!user) return;
-
-    const fetchTemplates = async () => {
-      try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from('entry_templates')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
-
-        if (error) throw error;
-        setTemplates(data || []);
-      } catch (error: any) {
+      if (error) {
         console.error("Error fetching templates:", error.message);
         toast({
           title: "Error",
           description: "Failed to load templates",
           variant: "destructive",
         });
-      } finally {
-        setLoading(false);
+        return [];
       }
-    };
+      
+      return data || [];
+    },
+    enabled: !!user, // Only run query when user is available
+    staleTime: 30000, // Reduce refetching frequency (30 seconds)
+  });
 
-    fetchTemplates();
-  }, [user]);
-
-  const deleteTemplate = async (id: string) => {
-    try {
+  // Mutations for better UX
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
       const { error } = await supabase
         .from('entry_templates')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
-
-      setTemplates(templates.filter(template => template.id !== id));
+      return id;
+    },
+    onSuccess: (id) => {
+      queryClient.setQueryData(['templates', user?.id], (old: Template[] = []) => 
+        old.filter(template => template.id !== id)
+      );
       toast({
         title: "Success",
         description: "Template deleted successfully",
       });
-    } catch (error: any) {
+    },
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive",
       });
     }
-  };
+  });
 
-  const applyTemplate = async (template: Template, date: string) => {
-    if (!user || !date) return;
-
-    try {
+  const applyMutation = useMutation({
+    mutationFn: async ({ template, date }: { template: Template, date: string }) => {
+      if (!user || !date) throw new Error("User or date missing");
+      
       const { error } = await supabase
         .from('time_entries')
         .insert({
@@ -97,18 +102,32 @@ export const TemplateList = () => {
         });
 
       if (error) throw error;
-
+      return { success: true };
+    },
+    onSuccess: () => {
+      // Invalidate time entries to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['timeEntries'] });
+      
       toast({
         title: "Success",
         description: "Time entry created from template",
       });
-    } catch (error: any) {
+    },
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error.message,
         variant: "destructive",
       });
     }
+  });
+
+  const deleteTemplate = (id: string) => {
+    deleteMutation.mutate(id);
+  };
+
+  const applyTemplate = (template: Template, date: string) => {
+    applyMutation.mutate({ template, date });
   };
 
   const formatTime = (time: string | null) => {
@@ -121,7 +140,7 @@ export const TemplateList = () => {
     return currency ? currency.symbol : code;
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center p-6">
         <Loader2 className="h-8 w-8 animate-spin" />

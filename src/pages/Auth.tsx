@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -6,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Navigate, Link } from "react-router-dom";
+import { toast } from "@/components/ui/use-toast";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -21,16 +21,46 @@ const Auth = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!email || !password) {
+      toast({
+        title: "Missing information",
+        description: "Please provide both email and password",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsSigningIn(true);
-    await signIn(email, password);
-    setIsSigningIn(false);
+    try {
+      await signIn(email, password);
+    } catch (error) {
+      console.error("Sign in error:", error);
+    } finally {
+      setIsSigningIn(false);
+    }
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!email || !password) {
+      toast({
+        title: "Missing information",
+        description: "Please provide both email and password",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setIsSigningUp(true);
-    await signUp(email, password);
-    setIsSigningUp(false);
+    try {
+      await signUp(email, password);
+    } catch (error) {
+      console.error("Sign up error:", error);
+    } finally {
+      setIsSigningUp(false);
+    }
   };
 
   return (
